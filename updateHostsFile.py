@@ -80,6 +80,8 @@ def get_defaults():
         "commonexclusions": ["hulu.com"],
         "blacklistfile": path_join_robust(BASEDIR_PATH, "blacklist"),
         "whitelistfile": path_join_robust(BASEDIR_PATH, "whitelist"),
+        "dnsmasq": False,
+        "dnsmasqfilename": "dnsmasq-excludes.conf",
     }
 
 
@@ -122,6 +124,21 @@ def main():
         dest="targetip",
         default="0.0.0.0",
         help="Target IP address. Default is 0.0.0.0.",
+    )
+    parser.add_argument(
+        "--dnsmasq",
+        "-d",
+        dest="dnsmasq",
+        default=False,
+        action="store_true",
+        help="Generate dnsmasq config",
+    )
+    parser.add_argument(
+        "--dnsmasqfilename",
+        "-df",
+        dest="dnsmasqfilename",
+        default="dnsmasq-excludes.conf",
+        help="Generate dnsmasq config",
     )
     parser.add_argument(
         "--keepdomaincomments",
@@ -850,6 +867,10 @@ def remove_dups_and_excl(merge_file, exclusion_regexes, output_file=None):
     else:
         final_file = output_file
 
+    final_file_dnsmasq = None
+    if settings["dnsmasq"]:
+        final_file_dnsmasq = open( path_join_robust( settings["outputpath"], settings["dnsmasqfilename"] ), "w+b" )
+
     merge_file.seek(0)  # reset file pointer
     hostnames = {"localhost", "localhost.localdomain", "local", "broadcasthost"}
     exclusions = settings["exclusions"]
@@ -894,8 +915,14 @@ def remove_dups_and_excl(merge_file, exclusion_regexes, output_file=None):
             hostnames.add(hostname)
             number_of_rules += 1
 
+            if settings["dnsmasq"]:
+                write_data(final_file_dnsmasq, "address=/" + hostname + "/" + settings["targetip"] + "\n")
+
     settings["numberofrules"] = number_of_rules
     merge_file.close()
+
+    if settings["dnsmasq"]:
+        final_file_dnsmasq.close()
 
     if output_file is None:
         return final_file
